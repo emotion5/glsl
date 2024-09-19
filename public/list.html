@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLSL Code List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .code-preview {
+            max-height: 100px;
+            overflow: auto;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .delete-button {
+            background-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>GLSL Code List</h1>
+    <table id="code-list">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Created At</th>
+                <th>Code Preview</th>
+                <th>Preview</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        function fetchCodeList() {
+            fetch('/api/list')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.querySelector('#code-list tbody');
+                    tbody.innerHTML = '';
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.id}</td>
+                            <td>${item.title}</td>
+                            <td>${new Date(item.created_at).toLocaleString()}</td>
+                            <td><div class="code-preview"></div></td>
+                            <td><button class="button preview-button" data-id="${item.id}">Preview</button></td>
+                            <td><button class="button delete-button" data-id="${item.id}">Delete</button></td>
+                        `;
+                        tbody.appendChild(row);
+
+                        // Fetch and display code preview
+                        fetch(`/api/code/${item.id}`)
+                            .then(response => response.json())
+                            .then(codeData => {
+                                row.querySelector('.code-preview').textContent = codeData.code;
+                            });
+                    });
+
+                    // Add event listeners for preview buttons
+                    document.querySelectorAll('.preview-button').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            window.open(`/preview.html?id=${id}`, '_blank', 'width=800,height=600');
+                        });
+                    });
+
+                    // Add event listeners for delete buttons
+                    document.querySelectorAll('.delete-button').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            if (confirm('Are you sure you want to delete this code?')) {
+                                fetch(`/api/delete/${id}`, { method: 'DELETE' })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            fetchCodeList();  // Refresh the list
+                                        } else {
+                                            alert('Failed to delete the code.');
+                                        }
+                                    });
+                            }
+                        });
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        fetchCodeList();
+    </script>
+</body>
+</html>
